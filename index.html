@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnonimAI — Folosește AI. Fără să-ți expui datele.</title>
+<meta name="description" content="Gateway de pseudonimizare AI pentru limba română. On-premise. GDPR-native.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0F17;
+    --ink:#E9EEF7;
+    --muted:#8A94A6;
+    --faint:#5A6373;
+    --line:rgba(158,178,214,.10);
+    --line-strong:rgba(158,178,214,.22);
+    --accent:#9DB8FF;
+    --accent-dim:rgba(157,184,255,.12);
+    --token-bg:rgba(157,184,255,.10);
+    --max:1120px;
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --body:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--accent);color:#0B0F17}
+
+  /* ---------- canvas ---------- */
+  #scene{
+    position:fixed;inset:0;z-index:0;
+    display:block;width:100%;height:100%;
+    pointer-events:none;
+  }
+  .veil{
+    position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 70% -10%, rgba(157,184,255,.06), transparent 60%),
+      linear-gradient(180deg, rgba(11,15,23,.25) 0%, rgba(11,15,23,0) 30%, rgba(11,15,23,0) 70%, rgba(11,15,23,.6) 100%);
+  }
+  .wrap{position:relative;z-index:2}
+
+  /* ---------- shared ---------- */
+  .container{max-width:var(--max);margin:0 auto;padding:0 28px}
+  section{border-top:1px solid var(--line);padding:112px 0}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--accent);
+    display:flex;align-items:center;gap:14px;margin-bottom:28px;
+  }
+  .eyebrow::after{content:"";height:1px;flex:1;max-width:120px;background:linear-gradient(90deg,var(--line-strong),transparent)}
+  h1,h2,h3{font-family:var(--display);font-weight:500;letter-spacing:-.01em}
+  .lead{color:var(--muted);max-width:56ch}
+  a{color:inherit}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:13px;letter-spacing:.04em;
+    padding:14px 26px;border-radius:2px;text-decoration:none;
+    border:1px solid var(--line-strong);color:var(--ink);
+    background:transparent;transition:border-color .25s,background .25s,color .25s;
+    cursor:pointer;
+  }
+  .btn:hover{border-color:var(--accent);background:var(--accent-dim)}
+  .btn.solid{background:var(--accent);border-color:var(--accent);color:#0B0F17}
+  .btn.solid:hover{background:#B9CCFF}
+  .btn:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    border-bottom:1px solid var(--line);
+    background:rgba(11,15,23,.72);backdrop-filter:blur(14px);
+  }
+  .nav-in{
+    max-width:var(--max);margin:0 auto;padding:0 28px;
+    height:64px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .logo{font-family:var(--mono);font-size:15px;letter-spacing:.02em;text-decoration:none}
+  .logo b{color:var(--accent);font-weight:500}
+  .nav-links{display:flex;gap:30px;align-items:center}
+  .nav-links a{
+    font-size:13.5px;color:var(--muted);text-decoration:none;transition:color .2s;
+  }
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{font-family:var(--mono);font-size:12px;border:1px solid var(--line-strong);
+    padding:9px 18px;border-radius:2px;color:var(--ink)!important;transition:border-color .2s,background .2s}
+  .nav-cta:hover{border-color:var(--accent);background:var(--accent-dim)}
+  .lang-toggle{
+    font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+    background:transparent;border:1px solid var(--line);border-radius:2px;
+    color:var(--muted);padding:8px 12px;cursor:pointer;
+    transition:border-color .2s,color .2s;
+  }
+  .lang-toggle:hover{border-color:var(--accent)}
+  .lang-toggle b{color:var(--ink);font-weight:500}
+  @media(max-width:760px){.nav-links a:not(.nav-cta){display:none}}
+
+  /* ---------- hero ---------- */
+  .hero{border-top:none;min-height:96vh;display:flex;align-items:center;padding:140px 0 80px}
+  .hero h1{font-size:clamp(40px,6.4vw,76px);line-height:1.04;letter-spacing:-.025em;max-width:16ch}
+  .hero h1 .dim{color:var(--faint)}
+  .hero .sub{
+    margin-top:30px;font-size:clamp(16px,1.6vw,19px);color:var(--muted);max-width:58ch;
+  }
+  .hero .sub strong{color:var(--ink);font-weight:500}
+  .hero-cta{margin-top:44px;display:flex;gap:16px;flex-wrap:wrap}
+  .trust{
+    margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
+    display:flex;gap:40px;flex-wrap:wrap;
+  }
+  .trust div{font-family:var(--mono);font-size:12px;color:var(--faint);letter-spacing:.03em}
+  .trust b{display:block;color:var(--ink);font-weight:500;font-size:15px;margin-bottom:4px}
+
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.on{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+  /* ---------- demo (signature) ---------- */
+  .demo-card{
+    position:relative;border:1px solid var(--line-strong);border-radius:4px;
+    background:rgba(13,18,28,.78);backdrop-filter:blur(6px);
+    padding:0;overflow:hidden;max-width:860px;
+  }
+  .demo-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 22px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.06em;
+  }
+  .demo-head .st{color:var(--accent)}
+  .demo-body{padding:30px 26px 26px;font-size:15.5px;line-height:2.05;color:var(--muted)}
+  .pii{
+    position:relative;color:var(--ink);border-bottom:1px dashed rgba(157,184,255,.45);
+    white-space:nowrap;transition:opacity .3s;
+  }
+  .tok{
+    font-family:var(--mono);font-size:.82em;color:var(--accent);
+    background:var(--token-bg);border:1px solid rgba(157,184,255,.28);
+    border-radius:2px;padding:1px 7px;white-space:nowrap;
+  }
+  .scanline{
+    position:absolute;top:0;bottom:0;width:1px;left:-2%;
+    background:linear-gradient(180deg,transparent,var(--accent),transparent);
+    box-shadow:0 0 24px rgba(157,184,255,.55);opacity:0;
+  }
+  .demo-foot{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    padding:14px 22px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);
+  }
+  .demo-foot .ok{color:var(--accent)}
+  .demo-note{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+  /* ---------- steps ---------- */
+  .steps{margin-top:64px;position:relative}
+  .steps::before{
+    content:"";position:absolute;left:7px;top:12px;bottom:12px;width:1px;
+    background:linear-gradient(180deg,transparent,var(--line-strong) 12%,var(--line-strong) 88%,transparent);
+  }
+  .step{position:relative;padding:0 0 56px 52px;max-width:640px}
+  .step:last-child{padding-bottom:0}
+  .step::before{
+    content:"";position:absolute;left:0;top:8px;width:15px;height:15px;border-radius:50%;
+    border:1px solid var(--line-strong);background:var(--bg);
+  }
+  .step.hot::before{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-dim)}
+  .step .n{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.2em;margin-bottom:8px}
+  .step h3{font-size:19px;margin-bottom:8px}
+  .step p{color:var(--muted);font-size:14.5px}
+  .step code{font-family:var(--mono);font-size:.85em;color:var(--accent);background:var(--token-bg);padding:1px 6px;border-radius:2px}
+
+  /* ---------- features ---------- */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);margin-top:64px}
+  .cell{
+    padding:34px 30px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    transition:background .3s;
+  }
+  .cell:hover{background:rgba(157,184,255,.04)}
+  .cell .k{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.16em;margin-bottom:16px}
+  .cell h3{font-size:17px;margin-bottom:10px}
+  .cell p{color:var(--muted);font-size:14px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}}
+
+  /* ---------- ROI ---------- */
+  .roi{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:64px}
+  .roi>div{background:var(--bg);padding:44px 34px}
+  .roi .big{
+    font-family:var(--display);font-size:clamp(40px,5vw,58px);font-weight:500;
+    letter-spacing:-.03em;color:var(--accent);line-height:1;
+  }
+  .roi h3{font-size:16px;margin:18px 0 8px}
+  .roi p{color:var(--muted);font-size:13.5px}
+  @media(max-width:820px){.roi{grid-template-columns:1fr}}
+
+  /* ---------- pricing ---------- */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:64px}
+  .plan{
+    border:1px solid var(--line);border-radius:4px;padding:36px 30px;
+    background:rgba(13,18,28,.55);display:flex;flex-direction:column;
+    transition:border-color .3s;
+  }
+  .plan:hover{border-color:var(--line-strong)}
+  .plan.pro{border-color:rgba(157,184,255,.5)}
+  .plan .tier{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--faint)}
+  .plan.pro .tier{color:var(--accent)}
+  .plan .price{font-family:var(--display);font-size:38px;font-weight:500;margin:16px 0 2px;letter-spacing:-.02em}
+  .plan .price span{font-size:14px;color:var(--faint);font-family:var(--body);letter-spacing:0}
+  .plan .vol{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:24px}
+  .plan ul{list-style:none;margin:0 0 30px;flex:1}
+  .plan li{
+    font-size:13.5px;color:var(--muted);padding:9px 0 9px 22px;position:relative;
+    border-top:1px solid var(--line);
+  }
+  .plan li::before{content:"—";position:absolute;left:0;color:var(--accent);font-family:var(--mono)}
+  .plan .btn{justify-content:center}
+  @media(max-width:900px){.plans{grid-template-columns:1fr}}
+
+  /* ---------- CTA / footer ---------- */
+  .final{min-height:70vh;display:flex;align-items:center}
+  .final h2{font-size:clamp(32px,4.6vw,54px);line-height:1.08;letter-spacing:-.02em;max-width:22ch}
+  .final .lead{margin-top:22px}
+  footer{border-top:1px solid var(--line);padding:34px 0}
+  .foot{
+    display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.04em;
+  }
+  h2.sec{font-size:clamp(28px,3.6vw,42px);letter-spacing:-.02em;max-width:24ch}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+
+<nav>
+  <div class="nav-in">
+    <a class="logo" href="#top">anonim<b>AI</b><span style="color:var(--faint)">_</span></a>
+    <div class="nav-links">
+      <a href="#demo" data-i18n="nav_demo">Demo</a>
+      <a href="#flux" data-i18n="nav_flow">Cum funcționează</a>
+      <a href="#functii" data-i18n="nav_features">Funcționalități</a>
+      <a href="#preturi" data-i18n="nav_pricing">Prețuri</a>
+      <a class="nav-cta" href="#contact" data-i18n="nav_cta">Programează demo</a>
+      <button class="lang-toggle" id="lang-toggle" aria-label="Switch language">
+        <b>RO</b> / EN
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap" id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="hero_eyebrow">Gateway de pseudonimizare · on-premise · limba română</div>
+      <h1 class="reveal" data-i18n="hero_h1">Folosește AI.<br><span class="dim">Fără să-ți expui datele.</span></h1>
+      <p class="sub reveal" data-i18n="hero_sub">AnonimAI detectează și înlocuiește datele personale din documentele tale — <strong>în infrastructura ta</strong> — înainte ca ele să ajungă în orice cloud. Antrenat pentru limba română. Construit pentru GDPR.</p>
+      <div class="hero-cta reveal">
+        <a class="btn solid" href="#contact" data-i18n="hero_cta1">Programează un demo pe documentele tale</a>
+        <a class="btn" href="#demo" data-i18n="hero_cta2">Vezi cum funcționează ↓</a>
+      </div>
+      <div class="trust reveal">
+        <div><b>&gt;99%</b><span data-i18n="trust1">recall pe CNP</span></div>
+        <div><b>&gt;97%</b><span data-i18n="trust2">nume flexionate</span></div>
+        <div><b>0</b><span data-i18n="trust3">date care ajung la noi</span></div>
+        <div><b>100%</b><span data-i18n="trust4">on-premise · audit imuabil</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section id="demo">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="demo_eyebrow">01 · Ce facem, exact</div>
+      <h2 class="sec reveal" data-i18n="demo_h2">Un document intră cu date personale.<br>Iese fără ele. Local.</h2>
+      <p class="lead reveal" style="margin-top:20px" data-i18n="demo_lead">Modelul nostru, fine-tuned pentru română, înțelege CNP-uri scrise în proză, nume declinate și text fără diacritice — tot ce regex-urile și uneltele internaționale ratează.</p>
+
+      <div class="demo-card reveal" style="margin-top:56px">
+        <div class="demo-head">
+          <span data-i18n="demo_file">dosar_2026_0841.pdf · pagina 1 din 3</span>
+          <span class="st" id="demo-status">— în așteptare</span>
+        </div>
+        <div class="demo-body" id="demo-text">
+          Subsemnatul <span class="pii" data-tok="[PERS_01]">Andrei Popescu</span>, CNP <span class="pii" data-tok="[CNP_01]">1850312254789</span>, domiciliat în <span class="pii" data-tok="[ADR_01]">Brașov, str. Lungă nr. 14</span>, solicit în numele clientei <span class="pii" data-tok="[PERS_02]">Mariei Ionescu</span> rambursarea sumei virate din contul <span class="pii" data-tok="[IBAN_01]">RO49 AAAA 1B31 0075 9384 0000</span>. Menționez că dosarul medical al <span class="pii" data-tok="[PERS_02]">doamnei Ionescu</span> include diagnosticul <span class="pii" data-tok="[MED_01]">diabet zaharat tip 2</span>, comunicat la <span class="pii" data-tok="[TEL_01]">0722 314 556</span>.
+          <span class="scanline" id="scanline"></span>
+        </div>
+        <div class="demo-foot">
+          <span id="demo-count" data-i18n="demo_count">8 mențiuni detectate · 6 tipuri · 7 entități unice · consistență cross-document ✔</span>
+          <span class="ok" id="demo-risk">—</span>
+        </div>
+      </div>
+      <p class="reveal demo-note" data-i18n="demo_note">↑ „Mariei Ionescu" și „doamnei Ionescu" primesc același token — modelul înțelege că e aceeași persoană, în orice formă flexionată. Maparea reală rămâne într-un vault criptat, la tine.</p>
+    </div>
+  </section>
+
+  <!-- FLUX -->
+  <section id="flux">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="flow_eyebrow">02 · Fluxul de date</div>
+      <h2 class="sec reveal" data-i18n="flow_h2">Patru pași. Toți în perimetrul tău.</h2>
+      <div class="steps">
+        <div class="step reveal" data-i18n="step1">
+          <div class="n">PAS 01 — INGESTIE</div>
+          <h3>Documentele intră prin API, folder sau upload</h3>
+          <p>PDF (inclusiv scanat, cu OCR local), DOCX, e-mail, exporturi CSV/DB. Rulează ca un container Docker on-premise sau în VPC-ul tău.</p>
+        </div>
+        <div class="step reveal" data-i18n="step2">
+          <div class="n">PAS 02 — DETECȚIE</div>
+          <h3>Modelul NER românesc găsește datele personale</h3>
+          <p>CNP, nume flexionate, adrese, IBAN, telefoane, diagnostice, combinații identificabile — fiecare cu tip, poziție și scor de încredere.</p>
+        </div>
+        <div class="step reveal" data-i18n="step3">
+          <div class="n">PAS 03 — PSEUDONIMIZARE</div>
+          <h3>Tokeni consistenți, mapare reversibilă doar la tine</h3>
+          <p><code>Andrei Popescu</code> devine <code>[PERS_01]</code> în tot corpusul. Maparea se stochează într-un vault criptat AES-256, cu chei deținute exclusiv de tine.</p>
+        </div>
+        <div class="step reveal" data-i18n="step4">
+          <div class="n">PAS 04 — VALIDARE + AUDIT</div>
+          <h3>Un al doilea model încearcă re-identificarea</h3>
+          <p>Primești un scor de risc rezidual per document, zonele incerte merg la revizuire umană, iar fiecare operațiune se scrie într-un jurnal imuabil — dovada ta pentru autoritatea de supraveghere.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="functii">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="feat_eyebrow">03 · Funcționalități</div>
+      <h2 class="sec reveal" data-i18n="feat_h2">Construit ca infrastructură, nu ca demo.</h2>
+      <div class="grid reveal">
+        <div class="cell" data-i18n="feat1"><div class="k">NER-RO</div><h3>Motor fine-tuned pentru română</h3><p>Recall &gt;99% pe CNP și &gt;97% pe nume flexionate. Benchmark publicat, validat pe infrastructură HPC europeană.</p></div>
+        <div class="cell" data-i18n="feat2"><div class="k">VAULT</div><h3>Pseudonimizare reversibilă</h3><p>Tokeni stabili cross-document. Re-identificare posibilă doar local, cu cheile tale. Sau ireversibilă, dacă politica o cere.</p></div>
+        <div class="cell" data-i18n="feat3"><div class="k">API</div><h3>REST + procesare batch</h3><p>Se integrează în DMS, e-mail sau pipeline-ul tău de date. Foldere întregi procesate cu un singur apel.</p></div>
+        <div class="cell" data-i18n="feat4"><div class="k">RISC</div><h3>Raport adversarial per document</h3><p>Nu ne crezi pe cuvânt: un model secund încearcă activ re-identificarea și îți arată exact cât risc a rămas.</p></div>
+        <div class="cell" data-i18n="feat5"><div class="k">AUDIT</div><h3>Jurnal imuabil + dashboard</h3><p>Fiecare operațiune, înregistrată. Profiluri de politici pe domenii: juridic, medical, HR. Export pentru DPO.</p></div>
+        <div class="cell" data-i18n="feat6"><div class="k">DEPLOY</div><h3>On-premise / VPC / air-gapped</h3><p>Datele tale nu ajung niciodată la noi. Arhitectura poate fi verificată integral de echipa ta de securitate.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROI -->
+  <section>
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="roi_eyebrow">04 · Randamentul investiției</div>
+      <h2 class="sec reveal" data-i18n="roi_h2">Cifrele pe care le duci în board.</h2>
+      <div class="roi reveal">
+        <div data-i18n="roi1">
+          <div class="big">−95%</div>
+          <h3>timp de redactare</h3>
+          <p>De la ~2 ore de anonimizare manuală per dosar la sub 2 minute. La 200 de dosare pe lună: ~380 de ore recuperate — două norme întregi de operator, lunar.</p>
+        </div>
+        <div data-i18n="roi2">
+          <div class="big">×10</div>
+          <h3>un incident evitat plătește un deceniu</h3>
+          <p>Sancțiunile GDPR ajung la 4% din cifra de afaceri globală sau 20 mil. €, oricare e mai mare. Zece ani de AnonimAI Pro costă mai puțin decât o singură amendă serioasă.</p>
+        </div>
+        <div data-i18n="roi3">
+          <div class="big">3–6<span style="font-size:.45em"> luni</span></div>
+          <h3>time-to-market recuperat</h3>
+          <p>Proiectele AI blocate de juridic pornesc în săptămâni, nu trimestre — iar shadow AI-ul necontrolat din companie dispare.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="preturi">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="price_eyebrow">05 · Prețuri</div>
+      <h2 class="sec reveal" data-i18n="price_h2">Plătești pe volum. Estimabil din prima zi.</h2>
+      <p class="lead reveal" style="margin-top:18px" data-i18n="price_lead">Unitatea de măsură: pagini procesate pe lună (~3.000 caractere/pagină). Implementarea se facturează separat, o singură dată.</p>
+      <div class="plans reveal">
+        <div class="plan">
+          <div class="tier">STARTER</div>
+          <div class="price">149 €<span data-i18n="per_month"> /lună</span></div>
+          <div class="vol" data-i18n="vol1">5.000 pagini/lună · apoi 0,02 €/pag</div>
+          <ul data-i18n="list1">
+            <li>Cloud suveran, găzduit în România</li>
+            <li>Anonimizare ireversibilă + scor de risc de bază</li>
+            <li>API REST și interfață de upload</li>
+            <li>Suport prin e-mail, răspuns în 48h</li>
+            <li>Setup: 490 € (o singură dată)</li>
+          </ul>
+          <a class="btn" href="#contact" data-i18n="plan1_cta">Începe cu Starter</a>
+        </div>
+        <div class="plan pro">
+          <div class="tier" data-i18n="tier2">PRO — RECOMANDAT</div>
+          <div class="price">499 €<span data-i18n="per_month2"> /lună</span></div>
+          <div class="vol" data-i18n="vol2">50.000 pagini/lună · apoi 0,012 €/pag</div>
+          <ul data-i18n="list2">
+            <li>Container on-premise sau în VPC-ul tău</li>
+            <li>Vault criptat local, pseudonimizare reversibilă</li>
+            <li>Raport adversarial complet per document</li>
+            <li>Batch, SSO, webhook-uri · suport prioritar 8h</li>
+            <li>Setup: 1.900 € (o singură dată)</li>
+          </ul>
+          <a class="btn solid" href="#contact" data-i18n="plan2_cta">Programează demo</a>
+        </div>
+        <div class="plan">
+          <div class="tier">ENTERPRISE</div>
+          <div class="price"><span style="font-size:.55em;color:var(--faint)" data-i18n="from">de la </span>1.900 €<span data-i18n="per_month3"> /lună</span></div>
+          <div class="vol" data-i18n="vol3">Volum negociat · multi-site</div>
+          <ul data-i18n="list3">
+            <li>Deployment air-gapped, multi-locație</li>
+            <li>Fine-tuning pe taxonomia ta de documente</li>
+            <li>Benchmark trimestrial dedicat + SLA contractual</li>
+            <li>DPA custom, training pentru echipă</li>
+            <li>Setup: de la 4.900 €</li>
+          </ul>
+          <a class="btn" href="#contact" data-i18n="plan3_cta">Discută cu noi</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final" id="contact">
+    <div class="container">
+      <div class="eyebrow reveal" data-i18n="final_eyebrow">Următorul pas</div>
+      <h2 class="reveal" data-i18n="final_h2">Adu 10 documente reale.<br><span style="color:var(--faint)">Îți arătăm în 30 de minute ce ratează procesul tău actual.</span></h2>
+      <p class="lead reveal" data-i18n="final_lead">Demo pe datele tale, în infrastructura ta. Fără obligații, fără date trimise nicăieri.</p>
+      <div class="hero-cta reveal">
+        <a class="btn solid" href="mailto:contact@anonimai.ro">contact@anonimai.ro</a>
+        <a class="btn" href="#top" data-i18n="back_top">Înapoi sus</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container foot">
+      <span data-i18n="foot1">anonim<b style="color:var(--accent)">AI</b> · gateway de pseudonimizare · România</span>
+      <span data-i18n="foot2">Pseudonimizare cf. GDPR art. 4 pct. 5 · pregătit pentru EU AI Act · © 2026</span>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* =====================================================
+     i18n — RO is in the DOM; EN lives here. In-memory only.
+     ===================================================== */
+  var LANG = "ro";
+  var RO = {}; /* captured from DOM on load */
+  var EN = {
+    nav_demo:"Demo",
+    nav_flow:"How it works",
+    nav_features:"Features",
+    nav_pricing:"Pricing",
+    nav_cta:"Book a demo",
+    hero_eyebrow:"Pseudonymization gateway · on-premise · Romanian language",
+    hero_h1:'Use AI.<br><span class="dim">Without exposing your data.</span>',
+    hero_sub:'AnonimAI detects and replaces personal data in your documents — <strong>inside your own infrastructure</strong> — before anything reaches any cloud. Trained for Romanian. Built for GDPR.',
+    hero_cta1:"Book a demo on your own documents",
+    hero_cta2:"See how it works ↓",
+    trust1:"recall on CNP (national ID)",
+    trust2:"inflected Romanian names",
+    trust3:"data that ever reaches us",
+    trust4:"on-premise · immutable audit",
+    demo_eyebrow:"01 · What we do, exactly",
+    demo_h2:"A document comes in with personal data.<br>It leaves without it. Locally.",
+    demo_lead:"Our model, fine-tuned for Romanian, understands ID numbers written in prose, inflected names and text without diacritics — everything regex and international tools miss.",
+    demo_file:"case_2026_0841.pdf · page 1 of 3",
+    demo_count:"8 mentions detected · 6 types · 7 unique entities · cross-document consistency ✔",
+    demo_note:'↑ The sample stays in Romanian on purpose — that\u2019s the material this engine is built for. Note "Mariei Ionescu" and "doamnei Ionescu" (two inflected forms of the same person) receive the same token. The real mapping stays in an encrypted vault, on your side.',
+    flow_eyebrow:"02 · The data flow",
+    flow_h2:"Four steps. All inside your perimeter.",
+    step1:'<div class="n">STEP 01 — INGESTION</div><h3>Documents arrive via API, folder or upload</h3><p>PDF (including scans, with local OCR), DOCX, e-mail, CSV/DB exports. Runs as a Docker container on-premise or inside your VPC.</p>',
+    step2:'<div class="n">STEP 02 — DETECTION</div><h3>The Romanian NER model finds the personal data</h3><p>National IDs, inflected names, addresses, IBANs, phone numbers, diagnoses, identifiable combinations — each with type, position and a confidence score.</p>',
+    step3:'<div class="n">STEP 03 — PSEUDONYMIZATION</div><h3>Consistent tokens; the mapping stays only with you</h3><p><code>Andrei Popescu</code> becomes <code>[PERS_01]</code> across your whole corpus. The mapping is stored in a locally encrypted AES-256 vault, with keys held exclusively by you.</p>',
+    step4:'<div class="n">STEP 04 — VALIDATION + AUDIT</div><h3>A second model actively tries to re-identify</h3><p>You get a residual-risk score per document, uncertain spans go to human review, and every operation is written to an immutable log — your evidence for the supervisory authority.</p>',
+    feat_eyebrow:"03 · Features",
+    feat_h2:"Built as infrastructure, not as a demo.",
+    feat1:'<div class="k">NER-RO</div><h3>Engine fine-tuned for Romanian</h3><p>Recall &gt;99% on national IDs and &gt;97% on inflected names. Published benchmark, validated on European HPC infrastructure.</p>',
+    feat2:'<div class="k">VAULT</div><h3>Reversible pseudonymization</h3><p>Stable tokens across documents. Re-identification is possible only locally, with your keys. Or fully irreversible, if your policy requires it.</p>',
+    feat3:'<div class="k">API</div><h3>REST + batch processing</h3><p>Plugs into your DMS, e-mail or data pipeline. Entire folders processed with a single call.</p>',
+    feat4:'<div class="k">RISK</div><h3>Adversarial report per document</h3><p>Don\u2019t take our word for it: a second model actively attempts re-identification and shows you exactly how much risk remains.</p>',
+    feat5:'<div class="k">AUDIT</div><h3>Immutable log + dashboard</h3><p>Every operation, recorded. Policy profiles per domain: legal, medical, HR. Export-ready for your DPO.</p>',
+    feat6:'<div class="k">DEPLOY</div><h3>On-premise / VPC / air-gapped</h3><p>Your data never reaches us. The architecture can be fully verified by your own security team.</p>',
+    roi_eyebrow:"04 · Return on investment",
+    roi_h2:"The numbers you take to the board.",
+    roi1:'<div class="big">−95%</div><h3>redaction time</h3><p>From ~2 hours of manual anonymization per case file to under 2 minutes. At 200 files a month: ~380 hours recovered — two full-time operators, every month.</p>',
+    roi2:'<div class="big">×10</div><h3>one avoided incident pays for a decade</h3><p>GDPR fines reach 4% of global turnover or €20M, whichever is higher. Ten years of AnonimAI Pro costs less than a single serious fine.</p>',
+    roi3:'<div class="big">3–6<span style="font-size:.45em"> months</span></div><h3>time-to-market recovered</h3><p>AI projects blocked by legal start in weeks, not quarters — and uncontrolled shadow AI inside the company disappears.</p>',
+    price_eyebrow:"05 · Pricing",
+    price_h2:"You pay per volume. Predictable from day one.",
+    price_lead:"Unit of measure: pages processed per month (~3,000 characters/page). Implementation is billed separately, once.",
+    per_month:" /month", per_month2:" /month", per_month3:" /month",
+    from:"from ",
+    vol1:"5,000 pages/month · then €0.02/page",
+    vol2:"50,000 pages/month · then €0.012/page",
+    vol3:"Negotiated volume · multi-site",
+    tier2:"PRO — RECOMMENDED",
+    list1:"<li>Sovereign cloud, hosted in Romania</li><li>Irreversible anonymization + basic risk score</li><li>REST API and upload interface</li><li>E-mail support, 48h response</li><li>Setup: €490 (one-time)</li>",
+    list2:"<li>On-premise container or inside your VPC</li><li>Locally encrypted vault, reversible pseudonymization</li><li>Full adversarial report per document</li><li>Batch, SSO, webhooks · 8h priority support</li><li>Setup: €1,900 (one-time)</li>",
+    list3:"<li>Air-gapped, multi-site deployment</li><li>Fine-tuning on your document taxonomy</li><li>Dedicated quarterly benchmark + contractual SLA</li><li>Custom DPA, team training</li><li>Setup: from €4,900</li>",
+    plan1_cta:"Start with Starter",
+    plan2_cta:"Book a demo",
+    plan3_cta:"Talk to us",
+    final_eyebrow:"Next step",
+    final_h2:'Bring 10 real documents.<br><span style="color:var(--faint)">In 30 minutes we\u2019ll show you what your current process misses.</span>',
+    final_lead:"A demo on your data, in your infrastructure. No obligations, no data sent anywhere.",
+    back_top:"Back to top",
+    foot1:'anonim<b style="color:var(--accent)">AI</b> · pseudonymization gateway · Romania',
+    foot2:"Pseudonymization per GDPR art. 4(5) · EU AI Act ready · © 2026"
+  };
+  /* dynamic strings used by the demo */
+  var DYN = {
+    ro:{waiting:"— în așteptare", scanning:"● scanare…", done:"✔ pseudonimizat în 1.8s", risk:"scor risc rezidual: 0.3% — OK",
+        title:"AnonimAI — Folosește AI. Fără să-ți expui datele."},
+    en:{waiting:"— waiting", scanning:"● scanning…", done:"✔ pseudonymized in 1.8s", risk:"residual risk score: 0.3% — OK",
+        title:"AnonimAI — Use AI. Without exposing your data."}
+  };
+
+  var i18nEls = document.querySelectorAll("[data-i18n]");
+  i18nEls.forEach(function(el){ RO[el.getAttribute("data-i18n")] = el.innerHTML; });
+
+  var demoState = "waiting"; /* waiting | scanning | done */
+  var statusEl = document.getElementById("demo-status");
+  var riskEl = document.getElementById("demo-risk");
+  function applyDemoText(){
+    statusEl.textContent = DYN[LANG][demoState];
+    riskEl.textContent = demoState === "done" ? DYN[LANG].risk : "—";
+  }
+
+  var toggleBtn = document.getElementById("lang-toggle");
+  function setLang(lang){
+    LANG = lang;
+    var dict = lang === "en" ? EN : RO;
+    i18nEls.forEach(function(el){
+      var k = el.getAttribute("data-i18n");
+      if(dict[k] !== undefined) el.innerHTML = dict[k];
+    });
+    document.documentElement.setAttribute("lang", lang);
+    document.title = DYN[lang].title;
+    toggleBtn.innerHTML = lang === "en" ? 'RO / <b>EN</b>' : '<b>RO</b> / EN';
+    applyDemoText();
+  }
+  toggleBtn.addEventListener("click", function(){ setLang(LANG === "ro" ? "en" : "ro"); });
+
+  /* ---------- scroll reveals ---------- */
+  var revealEls = document.querySelectorAll(".reveal");
+  if("IntersectionObserver" in window && !reduced){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add("on"); io.unobserve(e.target); }
+      });
+    },{threshold:.15});
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add("on"); });
+  }
+
+  /* ---------- step highlight ---------- */
+  var steps = document.querySelectorAll(".step");
+  if("IntersectionObserver" in window){
+    var so = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ e.target.classList.toggle("hot", e.isIntersecting); });
+    },{threshold:.6});
+    steps.forEach(function(s){ so.observe(s); });
+  }
+
+  /* ---------- redaction demo (signature) ---------- */
+  var demoCard = document.querySelector(".demo-card");
+  var scan = document.getElementById("scanline");
+  var piis = Array.prototype.slice.call(document.querySelectorAll(".pii"));
+  function tokenize(el){
+    var t = document.createElement("span");
+    t.className = "tok";
+    t.textContent = el.getAttribute("data-tok");
+    el.replaceWith(t);
+  }
+  function runDemo(){
+    if(reduced){
+      piis.forEach(tokenize);
+      demoState = "done"; applyDemoText();
+      return;
+    }
+    demoState = "scanning"; applyDemoText();
+    scan.style.opacity = "1";
+    scan.style.transition = "left 1.9s cubic-bezier(.4,0,.2,1)";
+    requestAnimationFrame(function(){ scan.style.left = "102%"; });
+    piis.forEach(function(el,i){
+      setTimeout(function(){ tokenize(el); }, 260 + i*190);
+    });
+    setTimeout(function(){
+      scan.style.opacity = "0";
+      demoState = "done"; applyDemoText();
+    }, 2100);
+  }
+  applyDemoText();
+  if(demoCard && "IntersectionObserver" in window){
+    var ran = false;
+    var dio = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting && !ran){ ran = true; setTimeout(runDemo, 500); dio.disconnect(); }
+      });
+    },{threshold:.5});
+    dio.observe(demoCard);
+  } else if(demoCard){ runDemo(); }
+
+  /* ---------- three.js: document field -> vault lattice ---------- */
+  if(typeof THREE === "undefined") return;
+  var canvas = document.getElementById("scene");
+  var renderer;
+  try{
+    renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+  }catch(err){ canvas.style.display="none"; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0B0F17, 0.035);
+  var camera = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
+  camera.position.set(0, 0.4, 13);
+
+  /* Document: rows of points like lines of text. A subset = personal data (accent). */
+  var ROWS = 42, COLS = 64;
+  var COUNT = ROWS*COLS;
+  var docPos = new Float32Array(COUNT*3);
+  var vaultPos = new Float32Array(COUNT*3);
+  var colors = new Float32Array(COUNT*3);
+  var isPII = new Uint8Array(COUNT);
+
+  var cGray = new THREE.Color(0x39445A);
+  var cAccent = new THREE.Color(0x9DB8FF);
+
+  var piiCount = 0;
+  for(var i=0;i<COUNT;i++){ if(Math.random()<0.13){ isPII[i]=1; piiCount++; } }
+  var side = Math.ceil(Math.cbrt(piiCount));
+
+  var li = 0;
+  for(var r=0;r<ROWS;r++){
+    for(var c=0;c<COLS;c++){
+      var i3 = (r*COLS+c)*3;
+      /* "text line" layout: gaps like word breaks */
+      var wordGap = (Math.sin(c*0.9 + r*1.7)>0.82) ? 0.25 : 0;
+      var x = (c/COLS - 0.5) * 17 + wordGap;
+      var y = (0.5 - r/ROWS) * 11;
+      var z = Math.sin(c*0.35 + r*0.5) * 0.35 - 2;
+      docPos[i3]=x; docPos[i3+1]=y; docPos[i3+2]=z;
+
+      var idx = r*COLS+c;
+      if(isPII[idx]){
+        /* vault: ordered lattice cube, right side */
+        var lx = li % side, ly = Math.floor(li/side)%side, lz = Math.floor(li/(side*side));
+        vaultPos[i3]   = 5.4 + (lx-(side-1)/2)*0.62;
+        vaultPos[i3+1] = 0.2 + (ly-(side-1)/2)*0.62;
+        vaultPos[i3+2] = 1.5 + (lz-(side-1)/2)*0.62;
+        li++;
+        cAccent.toArray(colors, i3);
+      }else{
+        /* non-PII drifts slightly back and dims */
+        vaultPos[i3]   = x*1.06 - 1.2;
+        vaultPos[i3+1] = y*1.02;
+        vaultPos[i3+2] = z - 1.5;
+        cGray.toArray(colors, i3);
+      }
+    }
+  }
+
+  var geo = new THREE.BufferGeometry();
+  var current = new Float32Array(docPos);
+  geo.setAttribute("position", new THREE.BufferAttribute(current, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  var mat = new THREE.PointsMaterial({
+    size: 0.055, vertexColors: true, transparent: true, opacity: 0.9,
+    sizeAttenuation: true, depthWrite: false
+  });
+  var points = new THREE.Points(geo, mat);
+  var group = new THREE.Group();
+  group.add(points);
+
+  /* thin faded wireframe frame around the "vault" */
+  var vaultEdge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(side*0.62+0.5, side*0.62+0.5, side*0.62+0.5)),
+    new THREE.LineBasicMaterial({color:0x9DB8FF, transparent:true, opacity:0})
+  );
+  vaultEdge.position.set(5.4, 0.2, 1.5);
+  group.add(vaultEdge);
+
+  /* faint horizontal hairlines drifting in depth */
+  var lineGeo = new THREE.BufferGeometry();
+  var lp = new Float32Array([-11,0,0, 11,0,0]);
+  lineGeo.setAttribute("position", new THREE.BufferAttribute(lp,3));
+  for(var L=0;L<5;L++){
+    var hl = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({color:0x9DB8FF, transparent:true, opacity:0.05}));
+    hl.position.y = -4 + L*2.1;
+    hl.position.z = -4 - L*0.8;
+    group.add(hl);
+  }
+  scene.add(group);
+
+  var mouseX=0, mouseY=0;
+  window.addEventListener("mousemove", function(e){
+    mouseX = (e.clientX/window.innerWidth - .5);
+    mouseY = (e.clientY/window.innerHeight - .5);
+  }, {passive:true});
+
+  var scrollP = 0;
+  function onScroll(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    scrollP = max>0 ? window.scrollY/max : 0;
+  }
+  window.addEventListener("scroll", onScroll, {passive:true});
+  onScroll();
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w,h,false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  var smooth = 0, t = 0;
+  function ease(x){ return x<0?0:x>1?1:x*x*(3-2*x); }
+
+  function frame(){
+    t += 0.004;
+    /* migration happens between 5% and 55% of the page */
+    var target = ease((scrollP - 0.05) / 0.5);
+    smooth += (target - smooth) * 0.06;
+
+    var arr = geo.attributes.position.array;
+    for(var i=0;i<COUNT;i++){
+      var i3=i*3;
+      var m = isPII[i] ? smooth : smooth*0.55;
+      var jx = isPII[i] ? Math.sin(t*3 + i)*0.015*(1-smooth) : 0;
+      arr[i3]   = docPos[i3]   + (vaultPos[i3]  -docPos[i3]  )*m + jx;
+      arr[i3+1] = docPos[i3+1] + (vaultPos[i3+1]-docPos[i3+1])*m + Math.sin(t + i*0.7)*0.02;
+      arr[i3+2] = docPos[i3+2] + (vaultPos[i3+2]-docPos[i3+2])*m;
+    }
+    geo.attributes.position.needsUpdate = true;
+
+    vaultEdge.material.opacity = 0.22 * smooth;
+    vaultEdge.rotation.y = t*0.4;
+    vaultEdge.rotation.x = t*0.22;
+
+    group.rotation.y = -0.12 + mouseX*0.06 + scrollP*0.18;
+    group.rotation.x = -0.04 + mouseY*0.04;
+    camera.position.z = 13 - scrollP*1.6;
+
+    renderer.render(scene, camera);
+    if(!reduced) requestAnimationFrame(frame);
+  }
+
+  if(reduced){
+    smooth = 0.5;
+    var arr0 = geo.attributes.position.array;
+    for(var k=0;k<COUNT;k++){
+      var k3=k*3, mm = isPII[k]?0.5:0.27;
+      arr0[k3]=docPos[k3]+(vaultPos[k3]-docPos[k3])*mm;
+      arr0[k3+1]=docPos[k3+1]+(vaultPos[k3+1]-docPos[k3+1])*mm;
+      arr0[k3+2]=docPos[k3+2]+(vaultPos[k3+2]-docPos[k3+2])*mm;
+    }
+    geo.attributes.position.needsUpdate = true;
+    vaultEdge.material.opacity = 0.12;
+    renderer.render(scene, camera);
+  } else {
+    frame();
+  }
+})();
+</script>
+</body>
+</html>
